@@ -16,6 +16,7 @@ def hook_coordinate(site)
     site.data = site.data.merge(site.data[site.active_lang], &merger)
   end
 
+  site.static_files = site.coordinate_static_files(site.static_files)
   site.collections.each do |_, collection|
     collection.docs = site.coordinate_documents(collection.docs)
   end

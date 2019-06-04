@@ -105,6 +105,25 @@ module Jekyll
       approved.values
     end
 
+    # assigns natural permalinks to documents and prioritizes documents with
+    # active_lang languages over others
+    def coordinate_static_files(static_files)
+      regex = static_url_regex
+      approved = {}
+      static_files.each do |static_file|
+        next if static_file.exclude_from_localization?
+        lang = static_file.language
+        next if not lang
+        url = static_file.url.gsub(regex, '/')
+        next if @file_langs[url] == @active_lang
+        next if @file_langs[url] == @default_lang && lang != @active_lang
+        approved[url] = static_file
+        puts "    now using: " + static_file.path
+        @file_langs[url] = lang
+      end
+      approved.values
+    end
+
     # performs any necesarry operations on the documents before rendering them
     def process_documents(docs)
       return if @active_lang == @default_lang
@@ -131,6 +150,16 @@ module Jekyll
       %r{#{regex}}
     end
 
+    def static_url_regex
+      regex = '[\/\.]('
+      @languages.each do |lang|
+        regex += "(?:#{lang})|"
+      end
+      regex.chomp! '|'
+      regex += ')[\/\.]'
+      %r{#{regex}}
+    end
+
     # a regex that matches relative urls in a html document
     # matches href="baseurl/foo/bar-baz" and others like it
     # avoids matching excluded files
@@ -139,7 +168,7 @@ module Jekyll
       (@exclude + @languages).each do |x|
         regex += "(?!#{x}\/)"
       end
-      %r{href=\"?#{@baseurl}\/((?:#{regex}[^,'\"\s\/?\.#]+\.?)*(?:\/[^\]\[\)\(\"\'\s]*)?)\"}
+      %r{(href|src)=\"?#{@baseurl}\/((?:#{regex}[^,'\"\s\/?\.#]+\.?)*(?:\/[^\]\[\)\(\"\'\s]*)?)\"}
     end
 
     def absolute_url_regex(url)
@@ -147,15 +176,15 @@ module Jekyll
       (@exclude + @languages).each do |x|
         regex += "(?!#{x}\/)"
       end
-      %r{href=\"?#{url}#{@baseurl}\/((?:#{regex}[^,'\"\s\/?\.#]+\.?)*(?:\/[^\]\[\)\(\"\'\s]*)?)\"}
+      %r{(href|src)=\"?#{url}#{@baseurl}\/((?:#{regex}[^,'\"\s\/?\.#]+\.?)*(?:\/[^\]\[\)\(\"\'\s]*)?)\"}
     end
 
     def relativize_urls(doc, regex)
-      doc.output.gsub!(regex, "href=\"#{@baseurl}/#{@active_lang}/" + '\1"')
+      doc.output.gsub!(regex, "\1=\"#{@baseurl}/#{@active_lang}/" + '\2"')
     end
 
     def relativize_absolute_urls(doc, regex, url)
-      doc.output.gsub!(regex, "href=\"#{url}#{@baseurl}/#{@active_lang}/" + '\1"')
+      doc.output.gsub!(regex, "\1=\"#{url}#{@baseurl}/#{@active_lang}/" + '\2"')
     end
   end
 end

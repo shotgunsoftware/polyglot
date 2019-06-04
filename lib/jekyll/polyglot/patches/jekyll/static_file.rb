@@ -17,5 +17,20 @@ module Jekyll
       end
       false
     end
+
+    alias_method :destination_rel_dir_orig, :destination_rel_dir
+    def destination_rel_dir
+      return destination_rel_dir_orig if exclude_from_localization?
+      destination_rel_dir_orig.sub(@site.static_url_regex, '')
+    end
+
+    def language
+      return nil if exclude_from_localization?
+      m = @dir.match(@site.static_url_regex)
+      if m
+        return m[1]
+      end
+      nil
+    end
   end
 end
